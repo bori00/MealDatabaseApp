@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">TheMealDB</string>
+    <string name="ingredient_search_bar_label">Ingredient</string>
+    <string name="ingredient_search_button_title">Search</string>
+    <string name="ingredient_name_hint">ingredient name</string>
+    <string name="meal_results_label">Results</string>
+    <string name="empty_ingredient_name_error">Empty ingredient names not allowed</string>
+    <string name="category_label">Category:</string>
+    <string name="missing_string">TextView</string>
+    <string name="area_label">Area:</string>
+    <string name="instructions_label">Instructions:</string>
+    <string name="delete_meal_menu">Delete Meal</string>
+</resources>
