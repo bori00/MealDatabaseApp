@@ -5,13 +5,14 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
 import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.activity.result.ActivityResult
-import androidx.activity.result.ActivityResultCallback
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -28,6 +29,9 @@ import com.uid.themealdb.rest_api.model.converters.MealConverter
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.lang.Math.max
+import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
 import java.util.stream.Collectors
 
 
@@ -38,6 +42,9 @@ class MainActivity : AppCompatActivity() {
     lateinit private var layoutManager : LinearLayoutManager;
     lateinit var adapter: BaseMealsRecyclerViewAdapter;
     lateinit var getDeleteMealCommand : ActivityResultLauncher<Intent>;
+    lateinit var loadMealsProgressBar : ProgressBar;
+    lateinit var loadingStartTimestamp : LocalDateTime;
+    private val MIN_LOADING_TIME_MILISECONDS : Int = 1000;
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,6 +69,9 @@ class MainActivity : AppCompatActivity() {
             result: ActivityResult ->
             onDetailedMealActivityResult(result)
         }
+
+        // handle progress bar
+        loadMealsProgressBar = findViewById<ProgressBar>(R.id.mealsLoadingProgressBar)
     }
 
     @SuppressLint("NotifyDataSetChanged")
@@ -103,8 +113,14 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    @SuppressLint("NotifyDataSetChanged")
     fun loadMealsWithIngredient(ingredientName: String) {
         Log.d("MainActivity", "Searching for meals: $ingredientName")
+
+        loadingStartTimestamp = LocalDateTime.now()
+        loadMealsProgressBar.visibility = View.VISIBLE
+        baseMealsList.removeAll(baseMealsList)
+        adapter.notifyDataSetChanged()
 
         mealsAPI.getMealsWithIngredient(ingredientName).enqueue(object : Callback<BaseMealsResponseDTO> {
             override fun onResponse(
@@ -154,18 +170,29 @@ class MainActivity : AppCompatActivity() {
     fun onMealsLoaded(baseMealsResponseDTO: BaseMealsResponseDTO?) {
         Log.d("MainActivity", baseMealsResponseDTO.toString());
 
-        if (baseMealsResponseDTO != null && baseMealsResponseDTO.meals != null) {
-            val newBaseMealsList = baseMealsResponseDTO.meals.stream()
-                .map { baseMealDTO -> MealConverter.constructBaseMeal(baseMealDTO) }
-                .collect(Collectors.toList())
-            baseMealsList.removeAll(baseMealsList)
-            baseMealsList.addAll(newBaseMealsList)
-            Log.d("MainActivity", "New BaseMealList: " + baseMealsList.toString());
-        } else {
-            baseMealsList.removeAll(baseMealsList)
-            Toast.makeText(context, "No results found", Toast.LENGTH_LONG).show();
-        }
-        adapter.notifyDataSetChanged()
+        val now = LocalDateTime.now()
+        Log.d("MainActivity", "Timestamps: " + loadingStartTimestamp.toString() + "; " + now + ". Difference = " + ChronoUnit.MILLIS.between(loadingStartTimestamp, now))
+
+        val handler = Handler()
+        handler.postDelayed(
+            {
+                loadMealsProgressBar.visibility = View.GONE
+
+                if (baseMealsResponseDTO != null && baseMealsResponseDTO.meals != null) {
+                    val newBaseMealsList = baseMealsResponseDTO.meals.stream()
+                        .map { baseMealDTO -> MealConverter.constructBaseMeal(baseMealDTO) }
+                        .collect(Collectors.toList())
+                    baseMealsList.removeAll(baseMealsList)
+                    baseMealsList.addAll(newBaseMealsList)
+                    Log.d("MainActivity", "New BaseMealList: " + baseMealsList.toString());
+                } else {
+                    baseMealsList.removeAll(baseMealsList)
+                    Toast.makeText(context, "No results found", Toast.LENGTH_LONG).show();
+                }
+                adapter.notifyDataSetChanged()
+            },
+            (MIN_LOADING_TIME_MILISECONDS - ChronoUnit.MILLIS.between(loadingStartTimestamp, now)).coerceAtLeast(0)
+        )
     }
 
     private fun addMessageDividers(recyclerView: RecyclerView, linearLayoutManager : LinearLayoutManager) {

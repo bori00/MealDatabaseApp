@@ -4,14 +4,19 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
 import android.widget.EditText
 import android.widget.ImageView
+import android.widget.ProgressBar
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.constraintlayout.widget.ConstraintLayout
 import com.google.gson.Gson
 import com.squareup.picasso.Picasso
 import com.uid.themealdb.models.DetailedMeal
@@ -23,6 +28,7 @@ import com.uid.themealdb.rest_api.model.converters.MealConverter
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.time.temporal.ChronoUnit
 import java.util.stream.Collectors
 
 class DetailedMealActivity : AppCompatActivity() {
@@ -30,7 +36,7 @@ class DetailedMealActivity : AppCompatActivity() {
     private lateinit var meal : DetailedMeal;
     private val mealsAPI : MealsAPI = MealsAPI.create();
     private lateinit var context : Context;
-    private val DELETE_RESULT = 1;
+    private val MIN_LOADING_TIME_MILISECONDS = 1000;
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,6 +50,16 @@ class DetailedMealActivity : AppCompatActivity() {
             loadMeal()
             //The key argument here must match that used in the other activity
         }
+
+        val handler = Handler()
+        handler.postDelayed(
+            {
+                findViewById<ProgressBar>(R.id.mealLoadingProgressBar).visibility = View.GONE
+                findViewById<TextView>(R.id.loadingTextView).visibility = View.GONE
+                findViewById<ScrollView>(R.id.detailedMealView).visibility = View.VISIBLE
+            },
+            MIN_LOADING_TIME_MILISECONDS.toLong()
+        )
     }
 
     fun onMealLoaded(detailedMealsResponseDTO: DetailedMealsResponseDTO?) {
