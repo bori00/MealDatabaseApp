@@ -1,15 +1,20 @@
 package com.uid.themealdb
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
+import androidx.activity.result.ActivityResult
+import androidx.activity.result.ActivityResultCallback
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -25,12 +30,14 @@ import retrofit2.Callback
 import retrofit2.Response
 import java.util.stream.Collectors
 
+
 class MainActivity : AppCompatActivity() {
     private val mealsAPI : MealsAPI = MealsAPI.create();
     private val context : Context = this;
     private var baseMealsList : ArrayList<BaseMeal> = ArrayList();
     lateinit private var layoutManager : LinearLayoutManager;
     lateinit var adapter: BaseMealsRecyclerViewAdapter;
+    lateinit var getDeleteMealCommand : ActivityResultLauncher<Intent>;
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,14 +55,31 @@ class MainActivity : AppCompatActivity() {
         recyclerView.layoutManager = layoutManager
         recyclerView.adapter = adapter
         addMessageDividers(recyclerView, layoutManager)
+
+        // listen to results from DetailedMealActivity
+        getDeleteMealCommand = registerForActivityResult(ActivityResultContracts.StartActivityForResult())
+        {
+            result: ActivityResult ->
+            onDetailedMealActivityResult(result)
+        }
     }
 
-    fun onBaseMealClicked(baseMeal: BaseMeal, position: Int) {
+    @SuppressLint("NotifyDataSetChanged")
+    private fun onDetailedMealActivityResult(result: ActivityResult) {
+        if (result.resultCode == Activity.RESULT_OK && result.data?.hasExtra("delete") == true) {
+            val mealIdToDelete = result.data?.extras?.get("mealId")
+            baseMealsList.removeIf{baseMeal -> baseMeal.id == mealIdToDelete}
+            adapter.notifyDataSetChanged()
+        }
+    }
+
+    private fun onBaseMealClicked(baseMeal: BaseMeal, position: Int) {
         Log.d("MainActivity","Meal clicked" + baseMeal)
 
         val intent = Intent(this, DetailedMealActivity::class.java )
         intent.putExtra("mealId", baseMeal.id);
-        startActivity (intent)
+
+        getDeleteMealCommand.launch(intent)
     }
 
     inner class SearchMealsButtonOnClickListener(private val myContext : MainActivity) : View.OnClickListener{
@@ -144,7 +168,7 @@ class MainActivity : AppCompatActivity() {
         adapter.notifyDataSetChanged()
     }
 
-    fun addMessageDividers(recyclerView: RecyclerView, linearLayoutManager : LinearLayoutManager) {
+    private fun addMessageDividers(recyclerView: RecyclerView, linearLayoutManager : LinearLayoutManager) {
         val dividerItemDecoration = DividerItemDecoration(
             recyclerView.context,
             linearLayoutManager.orientation

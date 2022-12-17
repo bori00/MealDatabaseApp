@@ -1,6 +1,8 @@
 package com.uid.themealdb
 
+import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.Menu
@@ -28,6 +30,7 @@ class DetailedMealActivity : AppCompatActivity() {
     private lateinit var meal : DetailedMeal;
     private val mealsAPI : MealsAPI = MealsAPI.create();
     private lateinit var context : Context;
+    private val DELETE_RESULT = 1;
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -128,7 +131,13 @@ class DetailedMealActivity : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == R.id.deleteMeal) {
             Log.d("DetailedMealActivity", "Delete Meal: " + mealId)
+            onFinishActivityWithDeleteMeal()
         }
         return super.onOptionsItemSelected(item)
+    }
+
+    fun onFinishActivityWithDeleteMeal() {
+        setResult(Activity.RESULT_OK, Intent().putExtra("delete", true).putExtra("mealId", mealId));
+        finish();
     }
 }
